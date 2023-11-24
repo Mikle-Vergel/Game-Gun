@@ -43,15 +43,24 @@ class Gun:
         Происходит при отпускании кнопки мыши.
         Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
         """
-        global balls
+        global balls, bombs
         new_ball = Ball(self.screen)
+        new_bomb = Bomb(self.screen)
         new_ball.r += 5
         new_ball.x = self.x
         new_ball.y = self.y
-        self.an = math.atan2((event.pos[1]-new_ball.y), (event.pos[0]-new_ball.x))
+        new_bomb.x = self.x
+        new_bomb.y = self.y
+        self.an = math.atan2((event.pos[1] - new_ball.y), (event.pos[0] - new_ball.x))
+        self.an1 = math.atan2((event.pos[1]-new_bomb.y), (event.pos[0]-new_bomb.x))
         new_ball.vx = self.fire_power * math.cos(self.an)
         new_ball.vy = - self.fire_power * math.sin(self.an)
-        balls.append(new_ball)
+        new_bomb.vx = self.fire_power * math.cos(self.an1)
+        new_bomb.vy = - self.fire_power * math.sin(self.an1)
+        if event.button == 3:
+            bombs.append(new_bomb)
+        elif event.button == 1:
+            balls.append(new_ball)
         self.f2_on = 0
         self.fire_power = 10
 
@@ -137,6 +146,18 @@ class Ball:
         """
         return (self.x - obj.x)**2 + (self.y - obj.y)**2 <= (self.r + obj.r)**2
 
+class Bomb(Ball):
+
+    r = 5
+
+    def hittest(self, obj):
+        return (self.x - obj.x)**2 + (self.y - obj.y)**2 <= (self.r + 50 + obj.r)**2
+       
+    def draw(self):
+        pygame.draw.circle(self.screen, BLACK, (self.x, self.y), self.r)
+        pygame.draw.aaline(self.screen, GREY, [self.x, self.y], [self.x, self.y + self.r *4/3])
+        pygame.draw.circle(self.screen, RED, (self.x, self.y + self.r *4/3), 5)
+
 class Target:
 
     def __init__(self, screen: pygame.Surface):
@@ -172,6 +193,8 @@ class Target:
 
 class Target1(Target):
 
+    phi = 0
+
     def new_target(self):
         """ Инициализация новой цели. """
         self.r = random.randint(20, 50)
@@ -187,20 +210,25 @@ class Target1(Target):
             self.vy *= -1
         if self.x > WIDTH - self.r or self.x < self.r:
             self.vx *= -1
+        phi = math.atan2((gun.y - self.y), (gun.x - self.x))
+        self.v = math.sqrt((self.vy)**2 + (self.vx)**2)
+        w = 1
+        self.vy = (self.v + w*deltaTime)*math.sin(phi)
+        self.vx = (self.v + w*deltaTime)*math.cos(phi)
         self.y += self.vy
         self.x += self.vx
 
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
-        #pygame.draw.rect(self.screen, WHITE, (self.x - math.sqrt(2)/2*self.r, self.y - math.sqrt(2)/2*self.r, self.x + math.sqrt(2)*self.r, self.y + math.sqrt(2)*self.r),5)
+        pygame.draw.rect(self.screen, WHITE, (self.x - math.sqrt(2)/2*self.r, self.y - math.sqrt(2)/2*self.r, math.sqrt(2)*self.r, math.sqrt(2)*self.r),5)
 
 
 pygame.init()
 f_score = pygame.font.Font(None, 36)
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 balls = []
+bombs = []
 targets = []
-targets.append(Target(screen))
 targets.append(Target(screen))
 targets.append(Target1(screen))
 score = 0
@@ -219,6 +247,8 @@ while 1:
     for target in targets:
         target.draw()
     for b in balls:
+        b.draw()
+    for b in bombs:
         b.draw()
     pygame.display.update()
 
@@ -239,6 +269,14 @@ while 1:
             if b.hittest(target):
                 target.hit()
                 balls.remove(b)
+                break
+
+    for b in bombs:
+        b.move()
+        for target in targets:
+            if b.hittest(target):
+                target.hit()
+                bombs.remove(b)
                 break
 
     for target in targets:
