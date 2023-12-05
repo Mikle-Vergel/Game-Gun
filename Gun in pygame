@@ -5,7 +5,7 @@ from random import choice
 
 import pygame
 
-
+#KLRFM
 FPS = 30
 
 RED = 0xFF0000
